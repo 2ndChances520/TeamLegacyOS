@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TeamLegacy OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Fraunces:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root {
+    --bg:#07090f;
+    --panel:#0d1020;
+    --panel-2:#151b30;
+    --ink:#e9edf8;
+    --ink-dim:#8899c0;
+    --accent:#f0a500;
+    --accent-2:#3d8bff;
+    --accent-3:#ffd166;
+    --line:#1e2845;
+    --shadow: 0 24px 60px -10px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.04) inset;
+    --font-display: 'Fraunces', 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin:0; padding:0; }
+  html, body { height:100%; overflow:hidden; font-family: var(--font-mono); color:var(--ink); user-select:none; }
+
+  /* Desktop */
+  #desktop {
+    position:fixed; inset:0;
+    background: #111 center/cover no-repeat;
+    transition: background-image .6s ease;
+  }
+  /* default wallpaper as CSS gradient so it works offline */
+  #desktop.wp-default {
+    background:
+      radial-gradient(1200px 800px at 20% 10%, #0d1c50 0%, transparent 60%),
+      radial-gradient(900px 700px at 85% 90%, #1a1000 0%, transparent 55%),
+      linear-gradient(135deg, #07090f 0%, #0f1428 60%, #07090f 100%);
+  }
+  #desktop.wp-sunset {
+    background:
+      radial-gradient(1000px 700px at 50% 100%, #f0a500 0%, transparent 60%),
+      linear-gradient(180deg, #0a0e22 0%, #1a2060 50%, #f0a500 100%);
+  }
+  #desktop.wp-grid {
+    background:
+      linear-gradient(#00000000 0, #00000000 98%, #3d8bff20 100%) 0 0/40px 40px,
+      linear-gradient(90deg, #00000000 0, #00000000 98%, #3d8bff20 100%) 0 0/40px 40px,
+      radial-gradient(ellipse at center bottom, #001030 0%, #000 70%);
+  }
+  #desktop.wp-noise {
+    background:
+      repeating-linear-gradient(45deg, #1a1a1a 0 2px, #222 2px 4px),
+      #111;
+  }
+  #desktop.wp-paper {
+    background:
+      radial-gradient(600px 400px at 30% 30%, #fff4c2 0%, transparent 60%),
+      linear-gradient(180deg, #f7edcc 0%, #e8d898 100%);
+  }
+
+  /* Desktop icons */
+  #icons {
+    position:absolute; top:24px; left:24px; right:24px;
+    display:grid; grid-template-columns: repeat(auto-fill, 92px); gap:18px;
+    z-index:2;
+  }
+  .icon {
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:8px; border-radius:10px; cursor:pointer;
+    transition: background .15s;
+  }
+  .icon:hover { background: rgba(255,255,255,.08); }
+  .icon .glyph {
+    width:56px; height:56px; border-radius:14px;
+    background: var(--panel-2);
+    display:grid; place-items:center;
+    border:1px solid var(--line);
+    box-shadow: var(--shadow);
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-style: italic;
+    font-weight: 700;
+  }
+  .icon .label {
+    font-size:11px; letter-spacing:.04em;
+    color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,.8);
+    text-align:center; max-width:90px;
+  }
+  /* distinct icon colors */
+  .icon[data-app="gta"] .glyph { background:linear-gradient(145deg,#f0a500,#e06000); color:#fff;}
+  .icon[data-app="fly"] .glyph { background:linear-gradient(145deg,#3d8bff,#1a4dcc); color:#fff;}
+  .icon[data-app="notes"] .glyph { background:linear-gradient(145deg,#ffd166,#f0a500); color:#1a1000;}
+  .icon[data-app="paint"] .glyph { background:linear-gradient(145deg,#b984ff,#6a5ae0); color:#fff;}
+  .icon[data-app="term"] .glyph { background:linear-gradient(145deg,#151b30,#07090f); color:#3d8bff; border-color:#3d8bff40;}
+  .icon[data-app="settings"] .glyph { background:linear-gradient(145deg,#e8ecf5,#aab0c0); color:#111;}
+
+  /* Taskbar */
+  #taskbar {
+    position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
+    height:52px; padding:6px 10px;
+    background: rgba(18,21,29,.72);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border:1px solid #ffffff18;
+    border-radius:14px;
+    display:flex; align-items:center; gap:8px;
+    box-shadow: var(--shadow);
+    z-index: 9999;
+  }
+  #taskbar .brand {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight:700;
+    padding: 0 12px;
+    border-right:1px solid #ffffff18;
+    height:36px; display:flex; align-items:center;
+    letter-spacing:.02em;
+  }
+  #taskbar .brand span { color: var(--accent); }
+  .tb-btn {
+    height:40px; min-width:40px; padding:0 10px;
+    background: transparent;
+    border:1px solid transparent;
+    border-radius:10px;
+    color:var(--ink);
+    font-family: var(--font-mono);
+    font-size:12px;
+    cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+    transition: background .15s, border-color .15s;
+  }
+  .tb-btn:hover { background:#ffffff10; border-color:#ffffff1a; }
+  .tb-btn.active { background:#ffffff14; border-color:#ffffff28; }
+  .tb-dot { width:6px; height:6px; border-radius:50%; background: var(--accent-2); display:inline-block; }
+  #clock { margin-left:6px; padding:0 12px; border-left:1px solid #ffffff18; height:36px; display:flex; align-items:center; gap:10px; font-size:12px; color:var(--ink-dim);}
+  #rewindBtn {
+    background: linear-gradient(145deg, #f0a500, #e06000);
+    border:none; color:#fff; font-weight:700;
+    box-shadow: 0 0 18px #f0a50040;
+  }
+  #rewindBtn:hover { filter:brightness(1.1); }
+
+  /* Windows */
+  .window {
+    position:absolute;
+    min-width: 280px; min-height: 180px;
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display:flex; flex-direction:column;
+  }
+  .window.focused { border-color: #ffffff30; }
+  .titlebar {
+    height:38px; padding: 0 12px;
+    background: linear-gradient(180deg, #1c2030 0%, #151823 100%);
+    border-bottom: 1px solid var(--line);
+    display:flex; align-items:center; gap:10px;
+    cursor: grab;
+  }
+  .titlebar.dragging { cursor: grabbing; }
+  .tl-dots { display:flex; gap:6px; }
+  .tl-dot { width:12px; height:12px; border-radius:50%; border:1px solid #00000030; cursor:pointer;}
+  .tl-dot.close { background:#ff5b3a;}
+  .tl-dot.min   { background:#ffd93d;}
+  .tl-dot.max   { background:#46e0b5;}
+  .tl-title {
+    font-size:12px; color:var(--ink-dim); letter-spacing:.1em; text-transform:uppercase;
+    font-family: var(--font-mono);
+  }
+  .window-body { flex:1; overflow:hidden; position:relative; background:var(--panel); display:flex; }
+
+  /* Resize handle */
+  .resize {
+    position:absolute; right:0; bottom:0; width:16px; height:16px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, #ffffff30 50%, #ffffff30 60%, transparent 60%, transparent 75%, #ffffff30 75%, #ffffff30 85%, transparent 85%);
+  }
+
+  /* Notes app */
+  .notes {
+    flex:1; display:flex; flex-direction:column;
+    background: #fffdf3; color:#1a1a1a;
+  }
+  .notes-toolbar {
+    height:36px; padding: 0 12px;
+    background:#f5efd9; border-bottom:1px solid #e5dcbe;
+    display:flex; align-items:center; gap:10px;
+    font-family: var(--font-mono); font-size:11px; color:#6b5f3a;
+  }
+  .notes-toolbar button {
+    background: #fff8dc; border:1px solid #d7ca96;
+    padding: 4px 10px; border-radius:4px; cursor:pointer;
+    font-family: var(--font-mono); font-size:11px;
+  }
+  .notes-toolbar button:hover { background:#fff3b8; }
+  .notes textarea {
+    flex:1; border:0; outline:0; padding: 22px 28px;
+    background: transparent; color:#222;
+    font-family: var(--font-display); font-size:16px; line-height:1.7;
+    resize:none;
+  }
+
+  /* Paint app */
+  .paint {
+    flex:1; display:flex; flex-direction:column; background:#0f1117;
+  }
+  .paint-toolbar {
+    height:42px; padding: 0 10px;
+    background:#1a1f2b; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:8px;
+  }
+  .paint-toolbar .swatch {
+    width:22px; height:22px; border-radius:6px; border:2px solid #ffffff30; cursor:pointer;
+  }
+  .paint-toolbar .swatch.active { border-color:#fff; transform: scale(1.1);}
+  .paint-toolbar input[type=range] { width:100px; }
+  .paint-toolbar button {
+    background:#2a3040; border:1px solid var(--line);
+    color:var(--ink); padding: 4px 10px; border-radius:6px; cursor:pointer;
+    font-family: var(--font-mono); font-size:11px;
+  }
+  .paint-canvas-wrap { flex:1; background:#0a0c12; display:grid; place-items:center; overflow:hidden; }
+  .paint canvas { background:#fff; cursor: crosshair; max-width:100%; max-height:100%;}
+
+  /* Terminal */
+  .term {
+    flex:1; display:flex; flex-direction:column;
+    background:#06080c; color:#46e0b5;
+    font-family: var(--font-mono); font-size:13px;
+    padding: 10px;
+  }
+  .term .out { flex:1; overflow-y:auto; white-space:pre-wrap; word-break: break-word; line-height:1.5; }
+  .term .out::-webkit-scrollbar { width:6px;}
+  .term .out::-webkit-scrollbar-thumb { background:#ffffff20; border-radius:3px;}
+  .term .line { display:flex; align-items:center; }
+  .term .prompt { color: var(--accent); margin-right:6px;}
+  .term input {
+    flex:1; background:transparent; border:0; outline:0;
+    color: var(--ink); font-family: var(--font-mono); font-size:13px; caret-color: var(--accent-2);
+  }
+  .term .sys { color:#9aa3b8; }
+  .term .err { color:#ff5b3a; }
+  .term .ok { color:#ffd93d; }
+
+  /* Settings app */
+  .settings { flex:1; padding: 24px; overflow-y:auto; }
+  .settings h2 {
+    font-family: var(--font-display); font-style:italic; font-weight:700;
+    font-size: 26px; margin-bottom: 4px;
+  }
+  .settings p.muted { color: var(--ink-dim); font-size:12px; margin-bottom:20px; }
+  .wp-grid-sel { display:grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap:12px; }
+  .wp-card {
+    aspect-ratio: 16/10; border-radius:10px; cursor:pointer;
+    border:2px solid transparent; overflow:hidden; position:relative;
+    transition: transform .15s, border-color .15s;
+  }
+  .wp-card:hover { transform: translateY(-2px); }
+  .wp-card.active { border-color: var(--accent-2); }
+  .wp-card .label {
+    position:absolute; bottom:6px; left:8px; right:8px;
+    font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+    color:#fff; text-shadow:0 1px 2px #000;
+  }
+
+  /* 3D game windows fill */
+  .canvas3d { flex:1; display:block; background:#000; }
+  .game-hud {
+    position:absolute; top:10px; left:10px; z-index:3;
+    background: rgba(0,0,0,.6); backdrop-filter: blur(8px);
+    padding: 8px 12px; border-radius:8px;
+    font-family: var(--font-mono); font-size:11px; color:#fff;
+    line-height:1.5; pointer-events:none;
+    border:1px solid #ffffff20;
+  }
+  .game-hud b { color: var(--accent-2); }
+  .game-msg {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    padding: 14px 22px; background: rgba(0,0,0,.8);
+    border:1px solid #ffffff30; border-radius:10px;
+    color:#fff; font-family:var(--font-mono); font-size:13px;
+    text-align:center; pointer-events:none; z-index:4;
+    opacity:0; transition: opacity .3s;
+  }
+  .game-msg.show { opacity:1; }
+
+  /* Rewind overlay (SPECIAL FEATURE) */
+  #rewindOverlay {
+    position:fixed; inset:0; z-index: 10000;
+    background: radial-gradient(ellipse at center, rgba(240,165,0,.15), rgba(0,0,0,.85));
+    backdrop-filter: blur(2px);
+    display:none; flex-direction:column;
+    align-items:center; justify-content:flex-end;
+    padding-bottom: 100px;
+  }
+  #rewindOverlay.active { display:flex; }
+  #rewindOverlay .label {
+    font-family: var(--font-display); font-style:italic; font-weight:700;
+    font-size: 72px; color:#fff;
+    letter-spacing:.02em;
+    text-shadow: 0 0 30px #f0a50080;
+    margin-bottom: 10px;
+  }
+  #rewindOverlay .sub {
+    font-family: var(--font-mono); font-size:12px; color:#fff; opacity:.7;
+    letter-spacing:.2em; text-transform:uppercase; margin-bottom: 40px;
+  }
+  #rewindTrack {
+    width: 60vw; max-width: 800px;
+    height: 80px; background: rgba(0,0,0,.5);
+    border:1px solid #ffffff30; border-radius:12px;
+    position:relative; cursor: pointer;
+    overflow:hidden;
+  }
+  #rewindTrack::before {
+    content:''; position:absolute; inset:0;
+    background: repeating-linear-gradient(90deg,
+      #ffffff10 0 2px, transparent 2px 40px);
+  }
+  #rewindHead {
+    position:absolute; top:-6px; bottom:-6px; width:4px;
+    background: var(--accent);
+    box-shadow: 0 0 18px var(--accent);
+    left:100%;
+    pointer-events: none;
+  }
+  #rewindTime {
+    position:absolute; bottom:-28px; left:100%; transform:translateX(-50%);
+    font-family: var(--font-mono); font-size:11px; color:#fff;
+    white-space:nowrap;
+  }
+  #rewindHint {
+    margin-top: 50px;
+    font-family: var(--font-mono); font-size:11px;
+    color:#fff; opacity:.5; letter-spacing:.15em; text-transform:uppercase;
+  }
+  /* Scanline effect during rewind */
+  #rewindOverlay::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background: repeating-linear-gradient(0deg,
+      rgba(255,255,255,0) 0 3px,
+      rgba(255,255,255,.02) 3px 4px);
+    animation: scan 8s linear infinite;
+  }
+  @keyframes scan { to { background-position: 0 400px; } }
+
+  /* Boot sequence */
+  #boot {
+    position:fixed; inset:0; z-index: 99999;
+    background:#000; color:var(--accent-2);
+    font-family: var(--font-mono); font-size:12px;
+    padding: 40px;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  #boot .big {
+    font-family: var(--font-display); font-style:italic; font-weight:700;
+    font-size: 90px; color:#fff; line-height:1;
+    margin-bottom:20px;
+  }
+  #boot .big span { color: var(--accent); }
+  .boot-line { opacity:0; animation: bootLine .3s forwards; }
+  @keyframes bootLine { to { opacity:1; } }
+
+  /* Window animation */
+  .window { animation: winIn .2s ease; }
+  @keyframes winIn {
+    from { opacity:0; transform: scale(.96); }
+    to   { opacity:1; transform: scale(1); }
+  }
+
+  /* Context hint for game controls */
+  .keyhint {
+    display:inline-block; padding: 1px 6px;
+    background: #ffffff20; border:1px solid #ffffff30;
+    border-radius:4px; font-size:10px; margin: 0 2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Boot screen -->
+<div id="boot">
+  <div class="big">TEAM<span>LEGACY</span></div>
+  <div class="boot-line" style="animation-delay:.1s">[ OK ] Initializing TeamLegacy kernel v1.0.0</div>
+  <div class="boot-line" style="animation-delay:.25s">[ OK ] Mounting /dev/legacy-vault</div>
+  <div class="boot-line" style="animation-delay:.4s">[ OK ] Loading TeamLegacy compositor</div>
+  <div class="boot-line" style="animation-delay:.6s">[ OK ] Starting LegacyRewind daemon — recording session state</div>
+  <div class="boot-line" style="animation-delay:.8s">[ OK ] Bootstrapping 3D arena engine</div>
+  <div class="boot-line" style="animation-delay:1.0s">[ OK ] Desktop ready</div>
+  <div class="boot-line" style="animation-delay:1.2s; color:#fff">&nbsp;</div>
+  <div class="boot-line" style="animation-delay:1.2s; color:#fff">welcome back, champion.</div>
+</div>
+
+<!-- Desktop -->
+<div id="desktop" class="wp-default">
+  <div id="icons">
+    <div class="icon" data-app="gta"><div class="glyph">C</div><div class="label">City Cruiser</div></div>
+    <div class="icon" data-app="fly"><div class="glyph">F</div><div class="label">Ring Flyer</div></div>
+    <div class="icon" data-app="notes"><div class="glyph">N</div><div class="label">Notes</div></div>
+    <div class="icon" data-app="paint"><div class="glyph">P</div><div class="label">Paint</div></div>
+    <div class="icon" data-app="term"><div class="glyph">&gt;_</div><div class="label">Terminal</div></div>
+    <div class="icon" data-app="settings"><div class="glyph">S</div><div class="label">Settings</div></div>
+  </div>
+</div>
+
+<!-- Rewind overlay (SPECIAL FEATURE) -->
+<div id="rewindOverlay">
+  <div class="label">REWIND</div>
+  <div class="sub">legacy vault · scrubbing session state</div>
+  <div id="rewindTrack">
+    <div id="rewindHead">
+      <div id="rewindTime">0.0s ago</div>
+    </div>
+  </div>
+  <div id="rewindHint">← → to scrub · ENTER to commit · ESC to cancel</div>
+</div>
+
+<!-- Taskbar -->
+<div id="taskbar">
+  <div class="brand">TEAM<span>LEGACY</span></div>
+  <div id="tbApps" style="display:flex; gap:6px;"></div>
+  <button class="tb-btn" id="rewindBtn" title="Rewind desktop state">◄◄ REWIND</button>
+  <div id="clock">--:--</div>
+</div>
+
+<script>
+/* =============================================================
+   TeamLegacy OS - single-file browser OS
+   - Window manager
+   - 5+ apps (2 are Three.js 3D games)
+   - Wallpaper changing
+   - SPECIAL FEATURE: "Memory Lane" rewind
+     Every ~200ms the full desktop state is snapshotted (window
+     positions/sizes, open apps, wallpaper, notes text, paint canvas).
+     Hit REWIND and scrub a timeline to fly backward through your
+     recent history — like a DVR for your whole desktop.
+   ============================================================= */
+
+// ---------- Boot hide ----------
+setTimeout(() => {
+  const boot = document.getElementById('boot');
+  boot.style.transition = 'opacity .5s';
+  boot.style.opacity = '0';
+  setTimeout(() => boot.remove(), 600);
+}, 1500);
+
+// ---------- Clock ----------
+function tickClock() {
+  const d = new Date();
+  const h = d.getHours().toString().padStart(2,'0');
+  const m = d.getMinutes().toString().padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+}
+tickClock(); setInterval(tickClock, 10000);
+
+// ---------- Window Manager ----------
+let zTop = 100;
+const windows = new Map(); // id -> {el, app, state}
+
+function makeWindow({id, title, w=720, h=480, x, y, app}) {
+  if (windows.has(id)) { focusWindow(id); return windows.get(id); }
+  const el = document.createElement('div');
+  el.className = 'window';
+  el.style.width = w+'px';
+  el.style.height = h+'px';
+  el.style.left = (x ?? (60 + Math.random()*120)) + 'px';
+  el.style.top  = (y ?? (40 + Math.random()*80))  + 'px';
+  el.dataset.id = id;
+  el.innerHTML = `
+    <div class="titlebar">
+      <div class="tl-dots">
+        <div class="tl-dot close" title="close"></div>
+        <div class="tl-dot min" title="minimize"></div>
+        <div class="tl-dot max" title="maximize"></div>
+      </div>
+      <div class="tl-title">${title}</div>
+    </div>
+    <div class="window-body"></div>
+    <div class="resize"></div>
+  `;
+  document.body.appendChild(el);
+  const body = el.querySelector('.window-body');
+
+  // drag
+  const tb = el.querySelector('.titlebar');
+  tb.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('tl-dot')) return;
+    const sx = e.clientX, sy = e.clientY;
+    const rect = el.getBoundingClientRect();
+    tb.classList.add('dragging');
+    focusWindow(id);
+    function onMove(ev) {
+      el.style.left = Math.max(0, Math.min(window.innerWidth-80, rect.left + ev.clientX - sx)) + 'px';
+      el.style.top  = Math.max(0, Math.min(window.innerHeight-100, rect.top + ev.clientY - sy)) + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      tb.classList.remove('dragging');
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  // resize
+  const rz = el.querySelector('.resize');
+  rz.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    const sx = e.clientX, sy = e.clientY;
+    const r = el.getBoundingClientRect();
+    function onMove(ev) {
+      const nw = Math.max(280, r.width + ev.clientX - sx);
+      const nh = Math.max(180, r.height + ev.clientY - sy);
+      el.style.width = nw+'px';
+      el.style.height = nh+'px';
+      // notify app to resize 3D renderer, etc.
+      const entry = windows.get(id);
+      if (entry && entry.onResize) entry.onResize(nw, nh-38);
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  // dots
+  el.querySelector('.tl-dot.close').addEventListener('click', () => closeWindow(id));
+  el.querySelector('.tl-dot.min').addEventListener('click', () => { el.style.display='none'; updateTaskbar(); });
+  el.querySelector('.tl-dot.max').addEventListener('click', () => {
+    if (el._max) {
+      Object.assign(el.style, el._max);
+      el._max = null;
+    } else {
+      el._max = { left:el.style.left, top:el.style.top, width:el.style.width, height:el.style.height };
+      el.style.left='10px'; el.style.top='10px';
+      el.style.width=(window.innerWidth-20)+'px';
+      el.style.height=(window.innerHeight-90)+'px';
+    }
+    const entry = windows.get(id);
+    if (entry && entry.onResize) {
+      const r = el.getBoundingClientRect();
+      entry.onResize(r.width, r.height-38);
+    }
+  });
+
+  el.addEventListener('mousedown', () => focusWindow(id));
+
+  const entry = { el, body, app, id, title };
+  windows.set(id, entry);
+  focusWindow(id);
+  updateTaskbar();
+  return entry;
+}
+
+function focusWindow(id) {
+  const entry = windows.get(id);
+  if (!entry) return;
+  entry.el.style.display = '';
+  entry.el.style.zIndex = ++zTop;
+  for (const [,v] of windows) v.el.classList.remove('focused');
+  entry.el.classList.add('focused');
+  updateTaskbar();
+}
+
+function closeWindow(id) {
+  const entry = windows.get(id);
+  if (!entry) return;
+  if (entry.onClose) entry.onClose();
+  entry.el.remove();
+  windows.delete(id);
+  updateTaskbar();
+}
+
+function updateTaskbar() {
+  const tb = document.getElementById('tbApps');
+  tb.innerHTML = '';
+  for (const [id, v] of windows) {
+    const b = document.createElement('button');
+    b.className = 'tb-btn' + (v.el.classList.contains('focused') && v.el.style.display!=='none' ? ' active' : '');
+    b.innerHTML = `<span class="tb-dot"></span> ${v.title}`;
+    b.onclick = () => {
+      if (v.el.style.display === 'none') { v.el.style.display=''; focusWindow(id); }
+      else if (v.el.classList.contains('focused')) { v.el.style.display='none'; updateTaskbar(); }
+      else focusWindow(id);
+    };
+    tb.appendChild(b);
+  }
+}
+
+// ---------- Wallpaper ----------
+const WALLPAPERS = [
+  {id:'wp-default', label:'Legacy Night'},
+  {id:'wp-sunset',  label:'Stadium Lights'},
+  {id:'wp-grid',    label:'Blueprint Grid'},
+  {id:'wp-noise',   label:'Carbon Fiber'},
+  {id:'wp-paper',   label:'Gold Draft'},
+];
+function setWallpaper(cls) {
+  const d = document.getElementById('desktop');
+  WALLPAPERS.forEach(w => d.classList.remove(w.id));
+  // also remove any custom
+  d.style.backgroundImage = '';
+  d.classList.add(cls);
+}
+
+// ---------- Apps ----------
+function openApp(app) {
+  if (app === 'gta')      openCityCruiser();
+  else if (app === 'fly') openRingFlyer();
+  else if (app === 'notes') openNotes();
+  else if (app === 'paint') openPaint();
+  else if (app === 'term')  openTerm();
+  else if (app === 'settings') openSettings();
+}
+document.querySelectorAll('#icons .icon').forEach(ic => {
+  ic.addEventListener('dblclick', () => openApp(ic.dataset.app));
+  // also single-click (more forgiving)
+  let lastClick = 0;
+  ic.addEventListener('click', () => {
+    const now = Date.now();
+    if (now - lastClick < 400) openApp(ic.dataset.app);
+    lastClick = now;
+  });
+});
+
+/* ==========================================================
+   APP 1: NOTES
+   ========================================================== */
+function openNotes() {
+  const entry = makeWindow({id:'notes', title:'Notes', w:560, h:420, app:'notes'});
+  if (!entry.body.innerHTML) {
+    entry.body.innerHTML = `
+      <div class="notes">
+        <div class="notes-toolbar">
+          <button id="notesClear">clear</button>
+          <button id="notesSample">sample</button>
+          <span style="flex:1"></span>
+          <span id="notesCount">0 chars</span>
+        </div>
+        <textarea id="notesArea" placeholder="Write something worth rewinding to..."></textarea>
+      </div>
+    `;
+    const ta = entry.body.querySelector('#notesArea');
+    const count = entry.body.querySelector('#notesCount');
+    ta.value = NOTES_TEXT;
+    count.textContent = ta.value.length + ' chars';
+    ta.addEventListener('input', () => {
+      NOTES_TEXT = ta.value;
+      count.textContent = ta.value.length + ' chars';
+    });
+    entry.body.querySelector('#notesClear').onclick = () => { ta.value=''; NOTES_TEXT=''; count.textContent='0 chars'; };
+    entry.body.querySelector('#notesSample').onclick = () => {
+      ta.value = `// legacy rewind demo\n\nTry this:\n1. Type anything here.\n2. Move some windows around.\n3. Click ◄◄ REWIND in the taskbar.\n4. Scrub with arrow keys.\n\nThe whole desktop flies backward through time.`;
+      NOTES_TEXT = ta.value;
+      count.textContent = ta.value.length + ' chars';
+    };
+    // expose for state restore
+    entry.apply = (txt) => { ta.value = txt; NOTES_TEXT = txt; count.textContent = txt.length + ' chars'; };
+  }
+}
+let NOTES_TEXT = '';
+
+/* ==========================================================
+   APP 2: PAINT
+   ========================================================== */
+let PAINT_STATE = { data: null }; // data URL snapshot
+function openPaint() {
+  const entry = makeWindow({id:'paint', title:'Paint', w:640, h:480, app:'paint'});
+  if (!entry.body.innerHTML) {
+    entry.body.innerHTML = `
+      <div class="paint">
+        <div class="paint-toolbar">
+          ${['#000000','#ff5b3a','#ffd93d','#46e0b5','#6a5ae0','#ffffff'].map(c=>`<div class="swatch" data-c="${c}" style="background:${c}"></div>`).join('')}
+          <span style="color:#9aa3b8; font-size:11px; margin-left:8px;">size</span>
+          <input type="range" id="pSize" min="1" max="40" value="6"/>
+          <button id="pClear">clear</button>
+          <button id="pSave">save png</button>
+        </div>
+        <div class="paint-canvas-wrap">
+          <canvas id="paintCanvas" width="720" height="420"></canvas>
+        </div>
+      </div>
+    `;
+    const canvas = entry.body.querySelector('#paintCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    let color = '#000000', size = 6, drawing=false, last=null;
+    const swatches = entry.body.querySelectorAll('.swatch');
+    swatches[0].classList.add('active');
+    swatches.forEach(sw => sw.onclick = () => {
+      swatches.forEach(s=>s.classList.remove('active'));
+      sw.classList.add('active');
+      color = sw.dataset.c;
+    });
+    entry.body.querySelector('#pSize').oninput = (e) => { size = +e.target.value; };
+    function pos(e) {
+      const r = canvas.getBoundingClientRect();
+      return { x: (e.clientX - r.left) * (canvas.width/r.width),
+               y: (e.clientY - r.top)  * (canvas.height/r.height) };
+    }
+    canvas.addEventListener('mousedown', e => { drawing=true; last=pos(e); });
+    canvas.addEventListener('mousemove', e => {
+      if (!drawing) return;
+      const p = pos(e);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size;
+      ctx.lineCap='round'; ctx.lineJoin='round';
+      ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke();
+      last = p;
+      PAINT_STATE.data = canvas.toDataURL();
+    });
+    window.addEventListener('mouseup', () => drawing=false);
+    entry.body.querySelector('#pClear').onclick = () => {
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      PAINT_STATE.data = canvas.toDataURL();
+    };
+    entry.body.querySelector('#pSave').onclick = () => {
+      const a = document.createElement('a');
+      a.download = 'teamlegacy-paint.png';
+      a.href = canvas.toDataURL();
+      a.click();
+    };
+    // restore state if any
+    if (PAINT_STATE.data) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img,0,0);
+      img.src = PAINT_STATE.data;
+    }
+    // expose for state restore
+    entry.apply = (dataUrl) => {
+      if (!dataUrl) {
+        ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        PAINT_STATE.data = canvas.toDataURL();
+        return;
+      }
+      const img = new Image();
+      img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); };
+      img.src = dataUrl;
+      PAINT_STATE.data = dataUrl;
+    };
+  }
+}
+
+/* ==========================================================
+   APP 3: TERMINAL
+   ========================================================== */
+function openTerm() {
+  const entry = makeWindow({id:'term', title:'Terminal', w:640, h:400, app:'term'});
+  if (!entry.body.innerHTML) {
+    entry.body.innerHTML = `
+      <div class="term">
+        <div class="out" id="termOut"></div>
+        <div class="line">
+          <span class="prompt">tl@legacy:~$</span>
+          <input id="termIn" autocomplete="off" spellcheck="false"/>
+        </div>
+      </div>
+    `;
+    const out = entry.body.querySelector('#termOut');
+    const inp = entry.body.querySelector('#termIn');
+    const history = []; let hIdx = 0;
+    function write(text, cls='') {
+      const d = document.createElement('div');
+      if (cls) d.className = cls;
+      d.textContent = text;
+      out.appendChild(d);
+      out.scrollTop = out.scrollHeight;
+    }
+    write('TeamLegacy OS terminal v1.0', 'sys');
+    write('type "help" to see commands', 'sys');
+    write('');
+    const cmds = {
+      help(){
+        write('available commands:', 'ok');
+        write('  help      - this message');
+        write('  clear     - clear screen');
+        write('  date      - current date/time');
+        write('  echo ...  - echo back');
+        write('  apps      - list installed apps');
+        write('  open X    - open app X (gta|fly|notes|paint|settings)');
+        write('  wp X      - set wallpaper (default|sunset|grid|noise|paper)');
+        write('  rewind    - trigger memory-lane rewind');
+        write('  whoami    - who are you');
+        write('  about     - about this OS');
+        write('  fortune   - a random fortune');
+      },
+      clear(){ out.innerHTML=''; },
+      date(){ write(new Date().toString()); },
+      echo(args){ write(args.join(' ')); },
+      apps(){ write('gta  fly  notes  paint  term  settings'); },
+      open(args){
+        const a = args[0];
+        if (['gta','fly','notes','paint','settings','term'].includes(a)) { openApp(a); write('opened '+a,'ok'); }
+        else write('unknown app: '+a, 'err');
+      },
+      wp(args){
+        const id = 'wp-'+args[0];
+        if (WALLPAPERS.find(w=>w.id===id)) { setWallpaper(id); write('wallpaper → '+args[0],'ok'); }
+        else write('wallpapers: '+WALLPAPERS.map(w=>w.id.replace('wp-','')).join(' '), 'err');
+      },
+      rewind(){ write('entering memory-lane...','ok'); setTimeout(()=>startRewind(), 200); },
+      whoami(){ write('user: champion  |  shell: tl-sh  |  uptime: ' + Math.floor(performance.now()/1000)+'s'); },
+      about(){
+        write('TeamLegacy OS — your branded browser workspace.', 'ok');
+        write('featuring the "Legacy Rewind" engine — every');
+        write('200ms of desktop state is captured so you can');
+        write('scrub backward through your session history.');
+      },
+      fortune(){
+        const f = [
+          'champions are built in the offseason.',
+          'rewind. reflect. rebuild.',
+          'a team without legacy is just a roster.',
+          'every rep is a decision.',
+          'legacy is what you leave, not what you win.',
+        ];
+        write(f[Math.floor(Math.random()*f.length)]);
+      }
+    };
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const v = inp.value.trim();
+        write('tl@legacy:~$ ' + v, 'sys');
+        if (v) { history.push(v); hIdx = history.length; }
+        const [c, ...rest] = v.split(/\s+/);
+        if (!c) {} else if (cmds[c]) cmds[c](rest);
+        else write('command not found: '+c, 'err');
+        inp.value='';
+      } else if (e.key === 'ArrowUp') {
+        if (hIdx>0) inp.value = history[--hIdx] || '';
+        e.preventDefault();
+      } else if (e.key === 'ArrowDown') {
+        if (hIdx<history.length-1) inp.value = history[++hIdx] || '';
+        else { hIdx = history.length; inp.value=''; }
+        e.preventDefault();
+      }
+    });
+    entry.body.addEventListener('mousedown', () => setTimeout(()=>inp.focus(), 0));
+    setTimeout(()=>inp.focus(), 100);
+  }
+}
+
+/* ==========================================================
+   APP 4: SETTINGS (wallpaper)
+   ========================================================== */
+function openSettings() {
+  const entry = makeWindow({id:'settings', title:'Settings', w:560, h:440, app:'settings'});
+  if (!entry.body.innerHTML) {
+    entry.body.innerHTML = `
+      <div class="settings">
+        <h2>Appearance</h2>
+        <p class="muted">choose a wallpaper. your choice is saved in this session's legacy vault.</p>
+        <div class="wp-grid-sel" id="wpGrid"></div>
+        <h2 style="margin-top:28px">About</h2>
+        <p class="muted">TeamLegacy OS · 5 apps · 2 real 3D games · legacy rewind engine · wallpaper engine</p>
+      </div>
+    `;
+    const grid = entry.body.querySelector('#wpGrid');
+    function render() {
+      grid.innerHTML = '';
+      const current = [...document.getElementById('desktop').classList].find(c=>c.startsWith('wp-')) || 'wp-default';
+      WALLPAPERS.forEach(w => {
+        const el = document.createElement('div');
+        el.className = 'wp-card' + (current===w.id ? ' active' : '');
+        // mini preview: same gradient
+        const tmp = document.createElement('div');
+        tmp.className = w.id;
+        // apply same background via inline copy
+        el.style.backgroundImage = getComputedStyle(fakeDiv(w.id)).backgroundImage;
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+        el.innerHTML = `<div class="label">${w.label}</div>`;
+        el.onclick = () => { setWallpaper(w.id); render(); };
+        grid.appendChild(el);
+      });
+    }
+    function fakeDiv(cls) {
+      const d = document.createElement('div');
+      d.className = cls;
+      d.style.position='absolute'; d.style.left='-9999px';
+      document.body.appendChild(d);
+      setTimeout(()=>d.remove(), 50);
+      return d;
+    }
+    render();
+  }
+}
+
+/* ==========================================================
+   APP 5: CITY CRUISER (3D GTA clone)
+   ========================================================== */
+function openCityCruiser() {
+  const entry = makeWindow({id:'gta', title:'City Cruiser — 3D', w:820, h:560, app:'gta'});
+  if (entry._inited) return; entry._inited = true;
+  const body = entry.body;
+  body.style.flexDirection='column';
+  body.innerHTML = `
+    <div class="game-hud" id="gtaHud">
+      <div>speed: <b><span id="gtaSpeed">0</span></b> km/h</div>
+      <div>score: <b><span id="gtaScore">0</span></b></div>
+      <div>cops: <b><span id="gtaCops">0</span></b> ★</div>
+      <div style="margin-top:6px;opacity:.8">
+        <span class="keyhint">W</span><span class="keyhint">A</span><span class="keyhint">S</span><span class="keyhint">D</span> drive · 
+        <span class="keyhint">SPACE</span> brake · <span class="keyhint">E</span> exit/enter car
+      </div>
+    </div>
+    <div class="game-msg" id="gtaMsg"></div>
+    <canvas class="canvas3d" id="gtaCanvas"></canvas>
+  `;
+  const canvas = body.querySelector('#gtaCanvas');
+  const hudSpeed = body.querySelector('#gtaSpeed');
+  const hudScore = body.querySelector('#gtaScore');
+  const hudCops  = body.querySelector('#gtaCops');
+  const msgEl    = body.querySelector('#gtaMsg');
+  function msg(t) { msgEl.textContent = t; msgEl.classList.add('show'); setTimeout(()=>msgEl.classList.remove('show'), 1500); }
+
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87a7cf);
+  scene.fog = new THREE.Fog(0x87a7cf, 60, 180);
+
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 400);
+
+  // Lights
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x556677, 0.9));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(50,80,30);
+  scene.add(sun);
+
+  // Ground + roads
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(400,400),
+    new THREE.MeshLambertMaterial({color:0x2c6b3f})
+  );
+  ground.rotation.x = -Math.PI/2;
+  scene.add(ground);
+
+  // Draw a road grid
+  const BLOCK = 30; // city block size
+  const ROAD = 8;  // road width
+  const GRID = 6;  // 6x6 blocks
+  const roadMat = new THREE.MeshLambertMaterial({color:0x2a2d33});
+  const lineMat = new THREE.MeshBasicMaterial({color:0xf4e79c});
+  const half = (GRID*BLOCK)/2;
+  for (let i=0; i<=GRID; i++) {
+    // horizontal road
+    const rh = new THREE.Mesh(new THREE.PlaneGeometry(GRID*BLOCK, ROAD), roadMat);
+    rh.rotation.x=-Math.PI/2; rh.position.set(0, 0.01, -half + i*BLOCK);
+    scene.add(rh);
+    // lines on horizontal
+    for (let x=-half+4; x<half; x+=6) {
+      const l = new THREE.Mesh(new THREE.PlaneGeometry(2,.3), lineMat);
+      l.rotation.x=-Math.PI/2; l.position.set(x, 0.02, -half+i*BLOCK);
+      scene.add(l);
+    }
+    // vertical road
+    const rv = new THREE.Mesh(new THREE.PlaneGeometry(ROAD, GRID*BLOCK), roadMat);
+    rv.rotation.x=-Math.PI/2; rv.position.set(-half + i*BLOCK, 0.01, 0);
+    scene.add(rv);
+    for (let z=-half+4; z<half; z+=6) {
+      const l = new THREE.Mesh(new THREE.PlaneGeometry(.3,2), lineMat);
+      l.rotation.x=-Math.PI/2; l.position.set(-half+i*BLOCK, 0.02, z);
+      scene.add(l);
+    }
+  }
+
+  // Buildings (on every block cell, with random heights)
+  const buildings = [];
+  const bldgColors = [0xd9c8a3, 0xb5b5c7, 0xa4b29f, 0xc27d62, 0x7d8a99, 0xe8d4a8];
+  for (let gx=0; gx<GRID; gx++) {
+    for (let gz=0; gz<GRID; gz++) {
+      const cx = -half + gx*BLOCK + BLOCK/2;
+      const cz = -half + gz*BLOCK + BLOCK/2;
+      // a few buildings inside the block
+      const count = 4;
+      for (let bi=0; bi<count; bi++) {
+        const bw = 7 + Math.random()*6;
+        const bd = 7 + Math.random()*6;
+        const bh = 6 + Math.random()*26;
+        const bx = cx + (bi%2 ? 1:-1)*(BLOCK/4 - 2 + (Math.random()*2-1));
+        const bz = cz + (bi<2 ? -1:1)*(BLOCK/4 - 2 + (Math.random()*2-1));
+        // skip if too close to road edges
+        if (Math.abs(bx) > half-ROAD/2 - bw/2) continue;
+        if (Math.abs(bz) > half-ROAD/2 - bd/2) continue;
+        const color = bldgColors[Math.floor(Math.random()*bldgColors.length)];
+        const m = new THREE.Mesh(
+          new THREE.BoxGeometry(bw,bh,bd),
+          new THREE.MeshLambertMaterial({color})
+        );
+        m.position.set(bx, bh/2, bz);
+        scene.add(m);
+        buildings.push({mesh:m, w:bw, d:bd, h:bh});
+        // window stripes as emissive overlay
+        const stripe = new THREE.Mesh(
+          new THREE.BoxGeometry(bw+0.01, bh*0.7, bd+0.01),
+          new THREE.MeshBasicMaterial({color:0x1a2030, transparent:true, opacity:0.85})
+        );
+        stripe.position.set(bx, bh*0.55, bz);
+        scene.add(stripe);
+      }
+    }
+  }
+
+  // Pedestrians
+  const peds = [];
+  function makePed() {
+    const g = new THREE.Group();
+    const color = Math.random()*0xffffff;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,1.2,8), new THREE.MeshLambertMaterial({color}));
+    body.position.y = 0.6; g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35,10,10), new THREE.MeshLambertMaterial({color:0xf0c48f}));
+    head.position.y = 1.5; g.add(head);
+    g.position.set((Math.random()*2-1)*half*0.9, 0, (Math.random()*2-1)*half*0.9);
+    // snap away from roads - put on sidewalk near buildings
+    g.userData = {
+      dir: new THREE.Vector3(Math.random()*2-1,0,Math.random()*2-1).normalize(),
+      speed: 0.02 + Math.random()*0.03,
+      alive: true,
+    };
+    scene.add(g);
+    peds.push(g);
+  }
+  for (let i=0;i<30;i++) makePed();
+
+  // Traffic cars (AI)
+  const traffic = [];
+  function makeCar(color=0x3355aa) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.6,0.7,3.2), new THREE.MeshLambertMaterial({color}));
+    body.position.y = 0.5; g.add(body);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.6,1.6), new THREE.MeshLambertMaterial({color: color===0xff2244 ? 0xffffff : 0x222233}));
+    top.position.set(0,1.0,-0.1); g.add(top);
+    // wheels
+    const wmat = new THREE.MeshLambertMaterial({color:0x111});
+    for (const [x,z] of [[-0.8,1.1],[0.8,1.1],[-0.8,-1.1],[0.8,-1.1]]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.32,0.3,10), wmat);
+      w.rotation.z = Math.PI/2;
+      w.position.set(x,0.32,z);
+      g.add(w);
+    }
+    return g;
+  }
+  function spawnTraffic() {
+    const car = makeCar(Math.random()*0xffffff);
+    // pick a road
+    const horizontal = Math.random()<0.5;
+    const laneIdx = Math.floor(Math.random()*(GRID+1));
+    if (horizontal) {
+      car.position.set((Math.random()*2-1)*half, 0, -half + laneIdx*BLOCK + (Math.random()<0.5?-1.8:1.8));
+      car.userData = { dir:(Math.random()<0.5?1:-1), axis:'x', speed:0.15 + Math.random()*0.1 };
+      car.rotation.y = car.userData.dir>0 ? Math.PI/2 : -Math.PI/2;
+    } else {
+      car.position.set(-half + laneIdx*BLOCK + (Math.random()<0.5?-1.8:1.8), 0, (Math.random()*2-1)*half);
+      car.userData = { dir:(Math.random()<0.5?1:-1), axis:'z', speed:0.15 + Math.random()*0.1 };
+      car.rotation.y = car.userData.dir>0 ? 0 : Math.PI;
+    }
+    scene.add(car);
+    traffic.push(car);
+  }
+  for (let i=0;i<12;i++) spawnTraffic();
+
+  // Player car
+  const playerCar = makeCar(0xff5b3a);
+  playerCar.position.set(0, 0, 0);
+  scene.add(playerCar);
+
+  // Player state
+  const state = {
+    inCar: true,
+    pos: playerCar.position,
+    rot: 0,    // facing
+    speed: 0,
+    playerObj: null, // on-foot mesh
+    score: 0,
+    wanted: 0,  // cop stars
+    copSpawn: 0,
+  };
+
+  // On-foot avatar
+  const foot = new THREE.Group();
+  const fbody = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,1.2,10), new THREE.MeshLambertMaterial({color:0xffd93d}));
+  fbody.position.y = 0.6; foot.add(fbody);
+  const fhead = new THREE.Mesh(new THREE.SphereGeometry(0.32,12,12), new THREE.MeshLambertMaterial({color:0xf0c48f}));
+  fhead.position.y = 1.5; foot.add(fhead);
+  foot.visible = false;
+  scene.add(foot);
+  state.playerObj = foot;
+
+  // Input
+  const keys = {};
+  function keydown(e){
+    if (!entry.el.classList.contains('focused') || entry.el.style.display==='none') return;
+    keys[e.key.toLowerCase()] = true;
+    if (e.key.toLowerCase() === 'e') {
+      // enter/exit car
+      if (state.inCar) {
+        // exit
+        state.inCar = false;
+        foot.position.copy(playerCar.position);
+        foot.position.x += 2;
+        foot.visible = true;
+        msg('exited vehicle — press E near a car to steal one');
+      } else {
+        // find nearest car within range
+        let nearest = null, nd = Infinity;
+        // include traffic cars
+        const candidates = [playerCar, ...traffic];
+        for (const c of candidates) {
+          const d = c.position.distanceTo(foot.position);
+          if (d < nd) { nd = d; nearest = c; }
+        }
+        if (nearest && nd < 3.5) {
+          if (nearest !== playerCar) {
+            // swap colors (stealing!)
+            state.wanted = Math.min(3, state.wanted+1);
+            hudCops.textContent = '★'.repeat(state.wanted) || '0';
+            msg('grand theft auto! wanted level ↑');
+            // teleport player car to that traffic car, remove the traffic
+            playerCar.position.copy(nearest.position);
+            playerCar.rotation.y = nearest.rotation.y;
+            scene.remove(nearest);
+            traffic.splice(traffic.indexOf(nearest),1);
+          }
+          state.rot = playerCar.rotation.y;
+          state.speed = 0;
+          state.inCar = true;
+          foot.visible = false;
+        } else {
+          msg('no car nearby');
+        }
+      }
+      e.preventDefault();
+    }
+  }
+  function keyup(e){ keys[e.key.toLowerCase()] = false; }
+  window.addEventListener('keydown', keydown);
+  window.addEventListener('keyup', keyup);
+  entry.onClose = () => {
+    window.removeEventListener('keydown', keydown);
+    window.removeEventListener('keyup', keyup);
+    cancelAnimationFrame(rafId);
+  };
+
+  // Resize
+  function resize(w, h) {
+    renderer.setSize(w, h, false);
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+  }
+  const initRect = body.getBoundingClientRect();
+  resize(initRect.width, Math.max(200, initRect.height));
+  entry.onResize = resize;
+
+  // Cops
+  const cops = [];
+  function spawnCop() {
+    const c = makeCar(0x2255ff);
+    // flashing roof
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.2,0.2,0.6), new THREE.MeshBasicMaterial({color:0xff2233}));
+    roof.position.set(0,1.4,-0.1);
+    c.add(roof);
+    c.userData.roof = roof;
+    // spawn at edge
+    const side = Math.floor(Math.random()*4);
+    if (side===0) c.position.set(-half+2, 0, (Math.random()*2-1)*half);
+    if (side===1) c.position.set(half-2,  0, (Math.random()*2-1)*half);
+    if (side===2) c.position.set((Math.random()*2-1)*half, 0, -half+2);
+    if (side===3) c.position.set((Math.random()*2-1)*half, 0, half-2);
+    scene.add(c);
+    cops.push(c);
+  }
+
+  // Game loop
+  let rafId;
+  let tick = 0;
+  function frame() {
+    tick++;
+    // player input
+    if (state.inCar) {
+      const accel = 0.012, maxSpeed = 0.6, friction = 0.98, brake = 0.92;
+      if (keys['w'] || keys['arrowup'])   state.speed = Math.min(maxSpeed, state.speed + accel);
+      if (keys['s'] || keys['arrowdown']) state.speed = Math.max(-maxSpeed*0.5, state.speed - accel);
+      if (keys[' ']) state.speed *= brake;
+      if (!keys['w'] && !keys['s'] && !keys['arrowup'] && !keys['arrowdown']) state.speed *= friction;
+      const turn = 0.04 * (state.speed / maxSpeed);
+      if (keys['a'] || keys['arrowleft'])  state.rot += turn;
+      if (keys['d'] || keys['arrowright']) state.rot -= turn;
+      const dx = -Math.sin(state.rot) * state.speed;
+      const dz = -Math.cos(state.rot) * state.speed;
+      // simple building collision: try move, then revert axis on collision
+      const nx = playerCar.position.x + dx;
+      const nz = playerCar.position.z + dz;
+      function hitsBuilding(x,z) {
+        for (const b of buildings) {
+          const bx = b.mesh.position.x, bz = b.mesh.position.z;
+          if (Math.abs(x-bx) < b.w/2 + 0.9 && Math.abs(z-bz) < b.d/2 + 0.9) return true;
+        }
+        return false;
+      }
+      if (!hitsBuilding(nx, playerCar.position.z)) playerCar.position.x = nx;
+      else state.speed *= -0.3;
+      if (!hitsBuilding(playerCar.position.x, nz)) playerCar.position.z = nz;
+      else state.speed *= -0.3;
+      // clamp within world
+      playerCar.position.x = Math.max(-half+2, Math.min(half-2, playerCar.position.x));
+      playerCar.position.z = Math.max(-half+2, Math.min(half-2, playerCar.position.z));
+      playerCar.rotation.y = state.rot;
+      // pedestrian hit (adds wanted!)
+      for (const p of peds) {
+        if (!p.userData.alive) continue;
+        if (p.position.distanceTo(playerCar.position) < 1.3 && Math.abs(state.speed) > 0.15) {
+          p.userData.alive = false;
+          p.rotation.z = Math.PI/2;
+          p.position.y = 0.5;
+          state.wanted = Math.min(3, state.wanted+1);
+          state.score += 5;
+          msg('hit-and-run! wanted ↑');
+        }
+      }
+      // traffic contact — push score if you side-swipe
+      for (const c of traffic) {
+        if (c.position.distanceTo(playerCar.position) < 2.4 && Math.abs(state.speed) > 0.2) {
+          state.score += 1;
+          // bounce
+          const dx = playerCar.position.x - c.position.x;
+          const dz = playerCar.position.z - c.position.z;
+          playerCar.position.x += dx*0.05;
+          playerCar.position.z += dz*0.05;
+          state.speed *= 0.7;
+        }
+      }
+    } else {
+      // on foot
+      const fs = 0.1;
+      let fdx=0, fdz=0;
+      if (keys['w']||keys['arrowup']) fdz -= fs;
+      if (keys['s']||keys['arrowdown']) fdz += fs;
+      if (keys['a']||keys['arrowleft']) fdx -= fs;
+      if (keys['d']||keys['arrowright']) fdx += fs;
+      foot.position.x = Math.max(-half+1, Math.min(half-1, foot.position.x + fdx));
+      foot.position.z = Math.max(-half+1, Math.min(half-1, foot.position.z + fdz));
+      if (fdx||fdz) foot.rotation.y = Math.atan2(-fdx, -fdz);
+    }
+
+    // peds wander
+    for (const p of peds) {
+      if (!p.userData.alive) continue;
+      const d = p.userData;
+      p.position.x += d.dir.x * d.speed;
+      p.position.z += d.dir.z * d.speed;
+      if (Math.abs(p.position.x) > half-1 || Math.abs(p.position.z) > half-1) {
+        d.dir.x *= -1; d.dir.z *= -1;
+      }
+      if (Math.random() < 0.005) {
+        d.dir.set(Math.random()*2-1,0,Math.random()*2-1).normalize();
+      }
+    }
+    // traffic move
+    for (const c of traffic) {
+      const u = c.userData;
+      if (u.axis==='x') {
+        c.position.x += u.dir * u.speed;
+        if (Math.abs(c.position.x) > half) u.dir *= -1, c.rotation.y += Math.PI;
+      } else {
+        c.position.z += u.dir * u.speed;
+        if (Math.abs(c.position.z) > half) u.dir *= -1, c.rotation.y += Math.PI;
+      }
+    }
+    // cop spawn
+    state.copSpawn += 1;
+    while (cops.length < state.wanted && state.copSpawn > 60) { spawnCop(); state.copSpawn = 0; }
+    // cop AI: chase whichever target (player car or foot)
+    const target = state.inCar ? playerCar.position : foot.position;
+    for (const c of cops) {
+      // flash roof
+      c.userData.roof.visible = (tick % 20) < 10;
+      const dx = target.x - c.position.x;
+      const dz = target.z - c.position.z;
+      const d = Math.hypot(dx,dz) || 1;
+      const spd = 0.18;
+      c.position.x += (dx/d)*spd;
+      c.position.z += (dz/d)*spd;
+      c.rotation.y = Math.atan2(-dx,-dz) + Math.PI;
+      if (d < 1.6) {
+        // busted — cool down
+        state.wanted = 0;
+        hudCops.textContent = '0';
+        for (const cc of cops) scene.remove(cc);
+        cops.length = 0;
+        msg('BUSTED — wanted reset');
+        // teleport player to center
+        if (state.inCar) { playerCar.position.set(0,0,0); state.speed=0; }
+        else { foot.position.set(0,0,0); }
+        state.score = Math.max(0, state.score-5);
+        break;
+      }
+    }
+
+    // camera follow (chase cam)
+    const target2 = state.inCar ? playerCar : foot;
+    const camDist = state.inCar ? 10 : 6;
+    const camHeight = state.inCar ? 5 : 3.5;
+    const cy = target2.rotation.y;
+    const cx = target2.position.x + Math.sin(cy)*camDist;
+    const cz = target2.position.z + Math.cos(cy)*camDist;
+    camera.position.lerp(new THREE.Vector3(cx, camHeight, cz), 0.15);
+    camera.lookAt(target2.position.x, 1, target2.position.z);
+
+    // HUD
+    hudSpeed.textContent = Math.round(Math.abs(state.speed)*180);
+    hudScore.textContent = state.score;
+    hudCops.textContent  = '★'.repeat(state.wanted) || '0';
+
+    renderer.render(scene, camera);
+    rafId = requestAnimationFrame(frame);
+  }
+  frame();
+  msg('drive with WASD · press E to exit car and steal another');
+}
+
+/* ==========================================================
+   APP 6: RING FLYER (3D flight game — second 3D game)
+   ========================================================== */
+function openRingFlyer() {
+  const entry = makeWindow({id:'fly', title:'Ring Flyer — 3D', w:820, h:560, app:'fly'});
+  if (entry._inited) return; entry._inited = true;
+  const body = entry.body;
+  body.style.flexDirection='column';
+  body.innerHTML = `
+    <div class="game-hud">
+      <div>rings: <b><span id="flyRings">0</span></b> / 20</div>
+      <div>time: <b><span id="flyTime">0.0</span></b>s</div>
+      <div style="margin-top:6px;opacity:.8">
+        <span class="keyhint">W</span>/<span class="keyhint">S</span> pitch ·
+        <span class="keyhint">A</span>/<span class="keyhint">D</span> yaw ·
+        <span class="keyhint">SHIFT</span> boost ·
+        <span class="keyhint">CTRL</span> brake
+      </div>
+    </div>
+    <div class="game-msg" id="flyMsg"></div>
+    <canvas class="canvas3d" id="flyCanvas"></canvas>
+  `;
+  const canvas = body.querySelector('#flyCanvas');
+  const hRings = body.querySelector('#flyRings');
+  const hTime  = body.querySelector('#flyTime');
+  const msgEl  = body.querySelector('#flyMsg');
+  function msg(t) { msgEl.textContent = t; msgEl.classList.add('show'); setTimeout(()=>msgEl.classList.remove('show'), 1500); }
+
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf3c6a5);
+  scene.fog = new THREE.Fog(0xf3c6a5, 80, 400);
+
+  const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 800);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x6a4a3a, 1.0));
+  const sun = new THREE.DirectionalLight(0xffddaa, 0.8);
+  sun.position.set(100,200,50); scene.add(sun);
+
+  // ground (low poly hills)
+  const groundGeo = new THREE.PlaneGeometry(1000, 1000, 60, 60);
+  const pos = groundGeo.attributes.position;
+  for (let i=0; i<pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    pos.setZ(i, Math.sin(x*0.03)*4 + Math.cos(y*0.04)*3 + Math.sin((x+y)*0.02)*5);
+  }
+  groundGeo.computeVertexNormals();
+  const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({color:0xb36b4a, flatShading:true}));
+  ground.rotation.x = -Math.PI/2;
+  ground.position.y = -20;
+  scene.add(ground);
+
+  // clouds
+  for (let i=0; i<40; i++) {
+    const g = new THREE.Group();
+    for (let j=0; j<4; j++) {
+      const s = 4+Math.random()*4;
+      const m = new THREE.Mesh(new THREE.SphereGeometry(s,8,8), new THREE.MeshLambertMaterial({color:0xffffff, transparent:true, opacity:0.8}));
+      m.position.set(j*3-4, Math.random()*2, Math.random()*3);
+      g.add(m);
+    }
+    g.position.set((Math.random()*2-1)*300, 30+Math.random()*60, (Math.random()*2-1)*300);
+    scene.add(g);
+  }
+
+  // rings — a curving path
+  const rings = [];
+  const ringCount = 20;
+  for (let i=0; i<ringCount; i++) {
+    const t = i/ringCount;
+    const r = new THREE.Mesh(
+      new THREE.TorusGeometry(4, 0.5, 10, 24),
+      new THREE.MeshLambertMaterial({color: i===0 ? 0x46e0b5 : 0xffd93d, emissive: i===0 ? 0x46e0b5 : 0xffd93d, emissiveIntensity: 0.3})
+    );
+    const angle = t * Math.PI * 2 * 2;
+    r.position.set(
+      Math.sin(angle) * (60 + t*40),
+      15 + Math.sin(t*Math.PI*3)*20,
+      -i * 30 - 20
+    );
+    r.rotation.y = angle + Math.PI/2;
+    r.userData = { collected:false, idx:i };
+    scene.add(r);
+    rings.push(r);
+  }
+
+  // Plane
+  const plane = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.ConeGeometry(0.7, 3, 6), new THREE.MeshLambertMaterial({color:0xff5b3a}));
+  hull.rotation.x = Math.PI/2;
+  plane.add(hull);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 0.8), new THREE.MeshLambertMaterial({color:0xe8ecf5}));
+  plane.add(wing);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.15, 0.5), new THREE.MeshLambertMaterial({color:0xe8ecf5}));
+  tail.position.z = 1.2;
+  plane.add(tail);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.9, 0.5), new THREE.MeshLambertMaterial({color:0xff5b3a}));
+  fin.position.set(0,0.5,1.2);
+  plane.add(fin);
+  plane.position.set(0,20,30);
+  scene.add(plane);
+
+  // Trail
+  const trailGeom = new THREE.BufferGeometry();
+  const trailPos = new Float32Array(300*3);
+  trailGeom.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+  const trail = new THREE.Line(trailGeom, new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:0.6}));
+  scene.add(trail);
+
+  // State
+  const st = {
+    speed: 0.6,
+    pitch: 0,
+    yaw: Math.PI,
+    collected: 0,
+    start: performance.now(),
+    done: false,
+  };
+  const keys = {};
+  function kd(e){
+    if (!entry.el.classList.contains('focused') || entry.el.style.display==='none') return;
+    keys[e.key.toLowerCase()] = true;
+  }
+  function ku(e){ keys[e.key.toLowerCase()] = false; }
+  window.addEventListener('keydown', kd);
+  window.addEventListener('keyup', ku);
+  entry.onClose = () => {
+    window.removeEventListener('keydown', kd);
+    window.removeEventListener('keyup', ku);
+    cancelAnimationFrame(rafId);
+  };
+
+  function resize(w, h) {
+    renderer.setSize(w, h, false);
+    camera.aspect = w/h; camera.updateProjectionMatrix();
+  }
+  const initRect = body.getBoundingClientRect();
+  resize(initRect.width, Math.max(200, initRect.height));
+  entry.onResize = resize;
+
+  let rafId;
+  const trailHistory = [];
+  function frame() {
+    // input
+    if (keys['w']) st.pitch = Math.max(-0.5, st.pitch - 0.015);
+    if (keys['s']) st.pitch = Math.min(0.5,  st.pitch + 0.015);
+    if (keys['a']) st.yaw += 0.02;
+    if (keys['d']) st.yaw -= 0.02;
+    if (keys['shift']) st.speed = Math.min(1.8, st.speed + 0.02);
+    else if (keys['control']) st.speed = Math.max(0.2, st.speed - 0.02);
+    else st.speed += (0.7 - st.speed) * 0.02;
+
+    // natural roll for visuals
+    plane.rotation.order = 'YXZ';
+    plane.rotation.y = st.yaw;
+    plane.rotation.x = st.pitch;
+    plane.rotation.z = (keys['a']?0.4:0) + (keys['d']?-0.4:0);
+
+    // move forward
+    const dx = Math.sin(st.yaw) * Math.cos(st.pitch) * st.speed;
+    const dy = -Math.sin(st.pitch) * st.speed;
+    const dz = Math.cos(st.yaw) * Math.cos(st.pitch) * st.speed;
+    plane.position.x += dx;
+    plane.position.y += dy;
+    plane.position.z += dz;
+    // keep above ground
+    if (plane.position.y < -15) { plane.position.y = -15; st.pitch = Math.max(st.pitch,0); }
+
+    // trail
+    trailHistory.unshift([plane.position.x, plane.position.y-0.3, plane.position.z]);
+    if (trailHistory.length > 100) trailHistory.length = 100;
+    for (let i=0; i<trailHistory.length; i++) {
+      trailPos[i*3]   = trailHistory[i][0];
+      trailPos[i*3+1] = trailHistory[i][1];
+      trailPos[i*3+2] = trailHistory[i][2];
+    }
+    trailGeom.setDrawRange(0, trailHistory.length);
+    trailGeom.attributes.position.needsUpdate = true;
+
+    // rings animate + collision
+    let nextRing = null;
+    for (const r of rings) {
+      r.rotation.z += 0.01;
+      if (r.userData.collected) r.visible = false;
+      else if (!nextRing || r.userData.idx < nextRing.userData.idx) nextRing = r;
+    }
+    if (nextRing) {
+      // glow nearest
+      for (const r of rings) {
+        if (r.userData.collected) continue;
+        r.material.color.setHex(r === nextRing ? 0x3d8bff : 0xf0a500);
+        r.material.emissive.setHex(r === nextRing ? 0x3d8bff : 0xf0a500);
+      }
+      if (nextRing.position.distanceTo(plane.position) < 4.2) {
+        nextRing.userData.collected = true;
+        st.collected++;
+        msg('ring ' + st.collected + '/' + ringCount);
+        if (st.collected === ringCount && !st.done) {
+          st.done = true;
+          const t = ((performance.now()-st.start)/1000).toFixed(1);
+          setTimeout(()=>msg('COURSE COMPLETE — ' + t + 's'), 300);
+        }
+      }
+    }
+
+    // camera: chase behind plane
+    const camOffset = new THREE.Vector3(
+      -Math.sin(st.yaw)*10,
+      -Math.sin(st.pitch)*-4 + 3,
+      -Math.cos(st.yaw)*10
+    );
+    const camTarget = plane.position.clone().add(camOffset);
+    camera.position.lerp(camTarget, 0.15);
+    camera.lookAt(plane.position);
+
+    // HUD
+    hRings.textContent = st.collected;
+    if (!st.done) hTime.textContent = ((performance.now()-st.start)/1000).toFixed(1);
+
+    renderer.render(scene, camera);
+    rafId = requestAnimationFrame(frame);
+  }
+  frame();
+  msg('fly through the blue ring · boost with SHIFT');
+}
+
+/* ==========================================================
+   SPECIAL FEATURE: MEMORY LANE REWIND
+   Every 200ms we snapshot the full desktop state. When you click
+   REWIND or press Ctrl+R, an overlay appears and you can scrub
+   through the last ~30 seconds with arrow keys. Enter commits the
+   state, Esc cancels.
+   ========================================================== */
+const ML = {
+  frames: [],
+  max: 150, // 150 * 200ms = 30 seconds
+  active: false,
+  cursor: 0,
+};
+
+function captureSnapshot() {
+  const snap = {
+    t: Date.now(),
+    wallpaper: [...document.getElementById('desktop').classList].find(c=>c.startsWith('wp-')) || 'wp-default',
+    windows: [],
+    notesText: NOTES_TEXT,
+    paintData: PAINT_STATE.data,
+  };
+  for (const [id, v] of windows) {
+    snap.windows.push({
+      id,
+      title: v.title,
+      left: v.el.style.left,
+      top: v.el.style.top,
+      width: v.el.style.width,
+      height: v.el.style.height,
+      display: v.el.style.display,
+      focused: v.el.classList.contains('focused'),
+      // we don't re-snapshot game state — too heavy — games just keep running
+    });
+  }
+  ML.frames.push(snap);
+  if (ML.frames.length > ML.max) ML.frames.shift();
+}
+setInterval(() => { if (!ML.active) captureSnapshot(); }, 200);
+
+function applySnapshot(s) {
+  // wallpaper
+  setWallpaper(s.wallpaper);
+  // notes
+  if (windows.has('notes') && windows.get('notes').apply) {
+    windows.get('notes').apply(s.notesText || '');
+  }
+  NOTES_TEXT = s.notesText || '';
+  // paint
+  if (windows.has('paint') && windows.get('paint').apply) {
+    windows.get('paint').apply(s.paintData || null);
+  }
+  PAINT_STATE.data = s.paintData;
+  // windows: close any no longer present
+  const ids = new Set(s.windows.map(w=>w.id));
+  for (const [id, v] of [...windows]) {
+    if (!ids.has(id)) closeWindow(id);
+  }
+  // apply positions (don't re-create games — only non-game windows are fully restored)
+  for (const w of s.windows) {
+    const entry = windows.get(w.id);
+    if (!entry) {
+      // re-open closed apps (except games — too heavy to re-instantiate mid-rewind)
+      if (w.id === 'notes') openNotes();
+      else if (w.id === 'paint') openPaint();
+      else if (w.id === 'term') openTerm();
+      else if (w.id === 'settings') openSettings();
+      // skip gta/fly re-open during rewind to avoid canvas churn
+    }
+    const cur = windows.get(w.id);
+    if (cur) {
+      cur.el.style.left = w.left;
+      cur.el.style.top = w.top;
+      cur.el.style.width = w.width;
+      cur.el.style.height = w.height;
+      cur.el.style.display = w.display;
+    }
+  }
+  updateTaskbar();
+}
+
+function startRewind() {
+  if (ML.frames.length < 2) return;
+  ML.active = true;
+  ML.cursor = ML.frames.length - 1;
+  document.getElementById('rewindOverlay').classList.add('active');
+  updateRewindUI();
+}
+function endRewind(commit) {
+  ML.active = false;
+  document.getElementById('rewindOverlay').classList.remove('active');
+  if (commit) {
+    // truncate the history to the selected point
+    ML.frames.length = ML.cursor + 1;
+  } else {
+    // apply the most recent frame back
+    applySnapshot(ML.frames[ML.frames.length-1]);
+  }
+}
+function updateRewindUI() {
+  const head = document.getElementById('rewindHead');
+  const time = document.getElementById('rewindTime');
+  const pct = ML.frames.length > 1 ? (ML.cursor / (ML.frames.length-1)) : 1;
+  head.style.left = (pct*100) + '%';
+  const secondsAgo = ((ML.frames.length-1 - ML.cursor) * 0.2).toFixed(1);
+  time.textContent = secondsAgo + 's ago';
+  applySnapshot(ML.frames[ML.cursor]);
+}
+document.getElementById('rewindBtn').onclick = () => startRewind();
+window.addEventListener('keydown', (e) => {
+  // global shortcut
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='r') {
+    e.preventDefault();
+    if (!ML.active) startRewind();
+    return;
+  }
+  if (!ML.active) return;
+  if (e.key === 'ArrowLeft')  { ML.cursor = Math.max(0, ML.cursor-1); updateRewindUI(); e.preventDefault(); }
+  if (e.key === 'ArrowRight') { ML.cursor = Math.min(ML.frames.length-1, ML.cursor+1); updateRewindUI(); e.preventDefault(); }
+  if (e.key === 'Enter')      { endRewind(true);  e.preventDefault(); }
+  if (e.key === 'Escape')     { endRewind(false); e.preventDefault(); }
+});
+
+// allow click-scrubbing on the track
+const track = document.getElementById('rewindTrack');
+track.addEventListener('click', (e) => {
+  const r = track.getBoundingClientRect();
+  const p = (e.clientX - r.left) / r.width;
+  ML.cursor = Math.round(p * (ML.frames.length-1));
+  updateRewindUI();
+});
+
+// ---------- Welcome hint ----------
+setTimeout(() => {
+  // open Notes on first boot with intro
+  if (windows.size === 0) {
+    openNotes();
+    const ent = windows.get('notes');
+    NOTES_TEXT = `welcome to TeamLegacy OS.
+
+5 apps live on the desktop (double-click to open):
+  · City Cruiser   — 3D driving sandbox (WASD + E to enter/exit car)
+  · Ring Flyer     — 3D flight game (fly the blue ring)
+  · Notes          — you're here
+  · Paint          — canvas with color + brush size
+  · Terminal       — try: help, open gta, wp stadium, rewind
+  · Settings       — change wallpaper
+
+special feature → LEGACY REWIND.
+click ◄◄ REWIND in the taskbar (or Ctrl+R) to open
+a timeline of the last 30 seconds of desktop state. arrow
+keys scrub, ENTER commits, ESC cancels.
+
+every window move, every keystroke in this note, every
+brush stroke in Paint, every wallpaper change — all
+recoverable. it's a DVR for your whole desktop.`;
+    ent.apply(NOTES_TEXT);
+  }
+}, 1800);
+
+</script>
+
+</body>
+</html>
