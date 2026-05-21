@@ -1,0 +1,34 @@
+Task:
+Using only HTML, CSS, and JavaScript, create a browser-based desktop operating system simulation that runs entirely in the browser.
+
+Core Requirements:
+
+The entire project must be contained in one self-contained file (single HTML script with embedded CSS and JS).
+
+The file must be directly openable in any modern web browser with no external dependencies, libraries, or servers.
+
+Features (Minimum 5 Total Applications/Functions):
+
+A desktop-style user interface with draggable application windows.
+
+Two fully functional, playable games (keyboard and/or mouse controlled).
+
+A wallpaper management feature allowing the user to change the desktop background at runtime.
+
+A Zero-Gravity Desktop Mode where windows float, drift, or animate as if in low gravity space.
+
+A Calculator able to function.
+
+add additional creative utility or application of your choice (e.g., notes app, system settings, clock, 2048 game, etc.).
+
+Design & Behavior Constraints:
+
+No external assets required (optional placeholders allowed).
+
+All UI logic, animations, and interactions must be handled with vanilla JavaScript.
+
+The experience should feel like a lightweight operating system, not just a webpage.
+
+Deliverable:
+
+Provide the complete single-file source code ready to save as an .html file and run locally.
